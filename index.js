@@ -363,43 +363,6 @@ app.view("quiz_question_count_modal", async ({ ack, body, view, client }) => {
   await startQuiz(client, userId, subject, difficulty, questionCount);
 });
 
-// GitHub webhook endpoint - posts PR updates to Slack
-app.receiver.router.use(require('express').json());
-
-app.receiver.router.post('/github/webhook', async (req, res) => {
-  const event = req.headers['x-github-event'];
-  const payload = req.body;
-
-  // Respond immediately so GitHub doesn't time out
-  res.status(200).send('OK');
-
-  // Only handle pull_request events for now
-  if (event === 'pull_request') {
-    const action = payload.action; // opened, closed, reopened, etc.
-    const pr = payload.pull_request;
-    const repo = payload.repository.full_name;
-
-    let text;
-    if (action === 'opened') {
-      text = `🔀 *New PR opened* in \`${repo}\`\n<${pr.html_url}|${pr.title}> by ${pr.user.login}`;
-    } else if (action === 'closed' && pr.merged) {
-      text = `✅ *PR merged* in \`${repo}\`\n<${pr.html_url}|${pr.title}> by ${pr.user.login}`;
-    } else if (action === 'closed') {
-      text = `❌ *PR closed (not merged)* in \`${repo}\`\n<${pr.html_url}|${pr.title}>`;
-    } else {
-      return; // skip other actions like "synchronize", "labeled", etc.
-    }
-
-    try {
-      await app.client.chat.postMessage({
-        channel: 'C0P5NE354', // replace with your channel ID
-        text,
-      });
-    } catch (err) {
-      console.error('Failed to post GitHub update to Slack:', err);
-    }
-  }
-});
 
 (async () => {
   await app.start(process.env.PORT || 3000);
